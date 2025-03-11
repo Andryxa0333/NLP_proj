@@ -1,8 +1,13 @@
 import numpy as np
 import pandas as pd
 import config
+import json
 
-np.random.seed(config.Config.data.random_seed)
+with open('config.json', 'r') as file:
+    data = json.load(file)
+config = config.Config(**data)
+
+np.random.seed(config.data.random_seed)
 
 def generate_complex_data():
     data = []

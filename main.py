@@ -106,8 +106,14 @@ def evaluate(model, loader, criterion, device, epoch):
                 raise ValueError("Unexpected batch format.")
 
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)[:, -1, :]
-            loss = criterion(outputs, targets)
+            outputs = model(inputs)
+
+            targets_expanded = targets.unsqueeze(1).expand(-1, outputs.size(1))
+
+            outputs = outputs.view(-1, outputs.size(-1))  # (32 * 17, 17746)
+            targets_expanded = targets_expanded.reshape(-1)
+
+            loss = criterion(outputs, targets_expanded)
             total_loss += loss.item()
             _, predicted = torch.max(outputs, 1)
             correct += (predicted == targets).sum().item()

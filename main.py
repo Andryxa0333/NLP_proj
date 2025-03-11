@@ -46,7 +46,7 @@ def collate_batch(batch):
     return padded_expressions, lengths, results_tensor
 
 
-def train_epoch(model, loader, optimizer, criterion, device, epoch):
+def train_epoch(model, loader, optimizer, criterion, scheduler, device, epoch):
     model.train()
     total_loss = 0
     correct = 0
@@ -61,15 +61,23 @@ def train_epoch(model, loader, optimizer, criterion, device, epoch):
 
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
-        outputs = model(inputs)[:, -1, :]
-        
-        loss = criterion(outputs, targets)
+
+        outputs = model(inputs)
+
+        targets_expanded = targets.unsqueeze(1).expand(-1, outputs.size(1))
+
+        outputs = outputs.view(-1, outputs.size(-1))  # (32 * 17, 17746)
+        targets_expanded = targets_expanded.reshape(-1)
+
+
+        loss = criterion(outputs, targets_expanded)
+
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
         predicted = torch.argmax(outputs, dim=1)
-        correct += (predicted == targets).sum().item()
+        correct += (predicted == targets_expanded).sum().item()/inputs.size(1)
         total += targets.size(0)
 
         writer.add_scalar("Train/Loss", loss.item(), epoch * len(loader) + batch_idx)
@@ -129,13 +137,14 @@ def log_final_plots(epochs, random_losses, curriculum_losses, random_accs, curri
     writer.add_figure("Results/Loss_Accuracy", fig)
     plt.close(fig)
 
-def train_random_sampling(model, train_loader, val_loader, optimizer, criterion, device, epochs):
+
+def train_random_sampling(model, train_loader, val_loader, optimizer, criterion, scheduler, device, epochs):
     random_train_losses, random_val_losses = [], []
     random_train_accs, random_val_accs = [], []
 
     for epoch in range(epochs):
         print(f"\nRandom Sampling Epoch {epoch+1}/{epochs}")
-        train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, device, epoch)
+        train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, scheduler, device, epoch)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device, epoch)
         random_train_losses.append(train_loss)
         random_train_accs.append(train_acc)
@@ -146,7 +155,7 @@ def train_random_sampling(model, train_loader, val_loader, optimizer, criterion,
 
     return random_train_losses, random_val_losses, random_train_accs, random_val_accs
 
-def train_curriculum_learning(model, train_dataset, val_loader, optimizer, criterion, device, epochs):
+def train_curriculum_learning(model, train_dataset, val_loader, optimizer, criterion, scheduler, device, epochs):
     curriculum_train_loader = DataLoader(train_dataset, batch_size=32, shuffle=False, collate_fn=collate_batch)
 
     curriculum_train_losses, curriculum_val_losses = [], []
@@ -154,7 +163,7 @@ def train_curriculum_learning(model, train_dataset, val_loader, optimizer, crite
 
     for epoch in range(epochs):
         print(f"\nCurriculum Learning Epoch {epoch+1}/{epochs}")
-        train_loss, train_acc = train_epoch(model, curriculum_train_loader, optimizer, criterion, device, epoch)
+        train_loss, train_acc = train_epoch(model, curriculum_train_loader, optimizer, criterion, scheduler, device, epoch)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device, epoch)
         curriculum_train_losses.append(train_loss)
         curriculum_train_accs.append(train_acc)
@@ -200,7 +209,15 @@ num_heads = config.model.num_heads
 dropout = config.model.dropout
 num_classes = df['result'].max() - df['result'].min() + 1
 
-model = TransformerDecoder(
+model_random = TransformerDecoder(
+    num_tokens=num_tokens,
+    n_embd=embedding_dim,
+    num_layers=num_layers,
+    num_heads=num_heads,
+    num_classes=num_classes
+).to(device)
+
+model_curriculum = TransformerDecoder(
     num_tokens=num_tokens,
     n_embd=embedding_dim,
     num_layers=num_layers,
@@ -211,14 +228,18 @@ model = TransformerDecoder(
 learning_rate = config.training.learning_rate
 num_epochs = config.training.num_epochs
 
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = transformers.get_linear_schedule_with_warmup(optimizer, (num_epochs + 9) // 10, num_epochs)
-criterion = nn.CrossEntropyLoss()
+optimizer_random = optim.Adam(model_random.parameters(), lr=learning_rate)
+scheduler_random = transformers.get_linear_schedule_with_warmup(optimizer_random, (num_epochs + 9) // 10, num_epochs)
+criterion_random = nn.CrossEntropyLoss()
+
+optimizer_curriculum = optim.Adam(model_curriculum.parameters(), lr=learning_rate)
+scheduler_curriculum = transformers.get_linear_schedule_with_warmup(optimizer_curriculum, (num_epochs + 9) // 10, num_epochs)
+criterion_curriculum = nn.CrossEntropyLoss()
 
 epochs = num_epochs
 
 random_train_losses, random_val_losses, random_train_accs, random_val_accs = train_random_sampling(
-    model, train_loader, val_loader, optimizer, criterion, device, epochs
+    model_random, train_loader, val_loader, optimizer_random, criterion_random, scheduler_random, device, epochs
 )
 
 def operation_priority(expression):
@@ -239,7 +260,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_batch)
 
 curriculum_train_losses, curriculum_val_losses, curriculum_train_accs, curriculum_val_accs = train_curriculum_learning(
-    model, train_dataset, val_loader, optimizer, criterion, device, epochs
+    model_curriculum, train_dataset, val_loader, optimizer_curriculum, criterion_curriculum, scheduler_curriculum, device, epochs
 )
 
 log_final_plots(

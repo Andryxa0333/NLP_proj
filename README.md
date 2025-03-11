@@ -52,7 +52,7 @@
 
 # Результаты эксперимента
 
-![image](![photo_2025-03-11_03-04-03](https://github.com/user-attachments/assets/3c55b0c7-93f0-430d-b580-fd1ff6e80cb7))
+![photo_2025-03-11_03-04-03](https://github.com/user-attachments/assets/e470998a-1a3b-4078-841a-14214888ecc0)
 
 Графики показывают динамику **Loss** и **Accuracy** для обоих подходов.
 

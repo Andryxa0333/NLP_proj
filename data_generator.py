@@ -12,33 +12,34 @@ np.random.seed(config.data.random_seed)
 def generate_complex_data():
     data = []
 
-    for i in range(0, 10, 5):  # i = 0 to 9
-        for j in range(1, 10):  # j = 1 to 9
-            i_random = i + np.random.randint(0, 5)
-            j_random = j + np.random.randint(0, 5)
+    for _ in range(90):
+        for i in range(0, 10, 5):  # i = 0 to 9
+            for j in range(1, 10):  # j = 1 to 9
+                i_random = i + np.random.randint(0, 5)
+                j_random = j + np.random.randint(0, 5)
 
-            expr = f"{i_random} + {j_random}"
-            result = i_random + j_random
-            if result >= 0:
+                expr = f"{i_random} + {j_random}"
+                result = i_random + j_random
+                if result >= 0:
+                    data.append({'expression': expr, 'result': result})
+
+                expr = f"{i_random} - {j_random}"
+                result = i_random - j_random
+                if result >= 0:
+                    data.append({'expression': expr, 'result': result})
+
+                expr = f"{i_random} * {j_random}"
+                result = i_random * j_random
                 data.append({'expression': expr, 'result': result})
 
-            expr = f"{i_random} - {j_random}"
-            result = i_random - j_random
-            if result >= 0:
+                if j_random != 0 and i_random % j_random == 0:
+                    expr = f"{i_random} / {j_random}"
+                    result = i_random // j_random
+                    data.append({'expression': expr, 'result': result})
+
+                expr = f"{i_random}^2"
+                result = i_random ** 2
                 data.append({'expression': expr, 'result': result})
-
-            expr = f"{i_random} * {j_random}"
-            result = i_random * j_random
-            data.append({'expression': expr, 'result': result})
-
-            if j_random != 0 and i_random % j_random == 0:
-                expr = f"{i_random} / {j_random}"
-                result = i_random // j_random
-                data.append({'expression': expr, 'result': result})
-
-            expr = f"{i_random}^2"
-            result = i_random ** 2
-            data.append({'expression': expr, 'result': result})
 
     for i in range(10, 100, 5):
         for j in range(10, 100):
@@ -68,14 +69,14 @@ def generate_complex_data():
             result = i_random ** 2
             data.append({'expression': expr, 'result': result})
 
-    for _ in range(1000):
+    for _ in range(3000):
         numbers = np.random.randint(1, 100, 3)
         expr = f"({numbers[0]} + {numbers[1]}) * {numbers[2]}"
         result = (numbers[0] + numbers[1]) * numbers[2]
         if result >= 0:
             data.append({'expression': expr, 'result': result})
 
-    for _ in range(1000):
+    for _ in range(3000):
         numbers = np.random.randint(1, 100, 4)
         expr = f"({numbers[0]} + {numbers[1]}) * ({numbers[2]} - {numbers[3]})"
         result = (numbers[0] + numbers[1]) * (numbers[2] - numbers[3])

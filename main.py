@@ -148,7 +148,7 @@ def train_learning(model, train_loader, val_loader, optimizer, criterion, schedu
     train_accs, val_accs = [], []
 
     for epoch in range(epochs):
-        print(f"\nRandom Sampling Epoch {epoch+1}/{epochs}")
+        print(f"\nEpoch {epoch+1}/{epochs}")
         train_loss, train_acc = train_epoch(model, train_loader, optimizer, criterion, scheduler, device, epoch)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device, epoch)
         train_losses.append(train_loss)
